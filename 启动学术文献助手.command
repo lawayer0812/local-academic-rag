@@ -1,4 +1,3 @@
-cat > "启动学术文献助手.command" <<'EOF'
 #!/bin/bash
 
 cd "$(dirname "$0")"
@@ -13,6 +12,3 @@ fi
 source .venv/bin/activate
 
 python -m streamlit run web_app.py --server.headless true
-EOF
-
-chmod +x "启动学术文献助手.command"
