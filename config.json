@@ -1,5 +1,5 @@
 {
-  "app_name": "吴老师知识库",
+  "app_name": "本地知识库",
   "streamlit_port": 8511,
   "pdf_port": 8512
 }
