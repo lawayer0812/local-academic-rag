@@ -58,8 +58,9 @@ chroma_client = chromadb.PersistentClient(
     path=CHROMA_FOLDER
 )
 
-collection = chroma_client.get_collection(
-    name=COLLECTION_NAME
+collection = chroma_client.get_or_create_collection(
+    name=COLLECTION_NAME,
+    metadata={"hnsw:space": "cosine"}
 )
 
 print(
@@ -124,6 +125,10 @@ def retrieve(
     top_k=TOP_K,
     source_filter=None
 ):
+
+    # 空知识库保护：没有任何文献时不执行向量检索
+    if collection.count() == 0:
+        return []
 
     query_embedding = embedding_model.encode(
         query,
