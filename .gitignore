@@ -1,0 +1,42 @@
+# Python 虚拟环境
+.venv/
+venv/
+
+# DeepSeek API Key
+.env
+
+# 用户自己的论文
+papers/*
+!papers/.gitkeep
+
+# 本地向量数据库
+chroma_db/*
+!chroma_db/.gitkeep
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# 日志
+*.log
+
+# Streamlit
+.streamlit/
+
+# VS Code 本地设置
+.vscode/
+
+echo "launcher.applescript" >> .gitignore
+# 本地备份和测试文件
+*_backup.py
+web_app_backup_*.py
+web_app_before_pdf_server.py
+launcher.applescript
+launcher_before_pdf_server.applescript
+reference_test_backup.py
+evidence_search_backup.py
+app_backup.py
