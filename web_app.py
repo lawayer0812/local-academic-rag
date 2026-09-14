@@ -54,7 +54,6 @@ CHROMA_FOLDER = os.path.join(
 )
 COLLECTION_NAME = CONFIG.get("collection_name", "academic_papers")
 PDF_PORT = int(CONFIG.get("pdf_port", 8502))
-PDF_SERVER_BASE = f"http://127.0.0.1:{PDF_PORT}"
 
 st.set_page_config(
     page_title=APP_NAME,
@@ -66,11 +65,30 @@ st.title(f"📚 {APP_NAME}")
 st.caption("在本地论文知识库中快速定位学术观点、出处、页码与原文证据")
 
 
-def _pdf_server_is_running():
-    """检查本地 PDF 服务是否已经启动。"""
+def _port_is_in_use(port):
+    """检查某个本地端口是否已经被占用。"""
     try:
         with socket.create_connection(
-            ("127.0.0.1", PDF_PORT),
+            ("127.0.0.1", port),
+            timeout=0.25,
+        ):
+            return True
+    except OSError:
+        return False
+
+
+def _find_free_port():
+    """自动寻找一个当前可用的本地端口。"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
+def _pdf_server_is_running(port):
+    """检查指定端口上的 PDF 服务是否已经启动。"""
+    try:
+        with socket.create_connection(
+            ("127.0.0.1", port),
             timeout=0.25,
         ):
             return True
@@ -80,11 +98,15 @@ def _pdf_server_is_running():
 
 @st.cache_resource
 def ensure_pdf_server():
-    """自动启动本地 PDF 浏览服务。"""
+    """自动启动本地 PDF 浏览服务，并自动避开端口冲突。"""
     os.makedirs(PAPERS_FOLDER, exist_ok=True)
 
-    if _pdf_server_is_running():
-        return True
+    # 优先使用 config.json 中设置的端口。
+    # 如果该端口已经被其他程序占用，则自动寻找一个空闲端口。
+    active_port = PDF_PORT
+
+    if _port_is_in_use(active_port):
+        active_port = _find_free_port()
 
     try:
         subprocess.Popen(
@@ -92,7 +114,7 @@ def ensure_pdf_server():
                 sys.executable,
                 "-m",
                 "http.server",
-                str(PDF_PORT),
+                str(active_port),
                 "--bind",
                 "127.0.0.1",
                 "--directory",
@@ -106,21 +128,30 @@ def ensure_pdf_server():
 
         for _ in range(10):
             time.sleep(0.15)
-            if _pdf_server_is_running():
-                return True
+
+            if _pdf_server_is_running(active_port):
+                return active_port
 
     except Exception:
-        return False
+        return None
 
-    return False
+    return None
 
 
-PDF_SERVER_OK = ensure_pdf_server()
+ACTIVE_PDF_PORT = ensure_pdf_server()
+PDF_SERVER_OK = ACTIVE_PDF_PORT is not None
 
 
 def build_pdf_url(source, page):
     encoded_name = quote(source)
-    return f"{PDF_SERVER_BASE}/{encoded_name}#page={page}"
+
+    if ACTIVE_PDF_PORT is None:
+        return "#"
+
+    return (
+        f"http://127.0.0.1:{ACTIVE_PDF_PORT}/"
+        f"{encoded_name}#page={page}"
+    )
 
 
 def extract_successful_reference_matches(trace_results):
