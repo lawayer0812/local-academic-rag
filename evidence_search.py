@@ -126,8 +126,19 @@ def retrieve(
     source_filter=None
 ):
 
-    # 空知识库保护：没有任何文献时不执行向量检索
-    if collection.count() == 0:
+    # 每次检索时重新连接 Chroma，
+    # 避免其他进程刚完成入库后仍使用旧的 HNSW reader
+    fresh_client = chromadb.PersistentClient(
+        path=CHROMA_FOLDER
+    )
+
+    fresh_collection = fresh_client.get_or_create_collection(
+        name=COLLECTION_NAME,
+        metadata={"hnsw:space": "cosine"}
+    )
+
+    # 空知识库保护
+    if fresh_collection.count() == 0:
         return []
 
     query_embedding = embedding_model.encode(
@@ -141,7 +152,7 @@ def retrieve(
 
     if source_filter:
 
-        results = collection.query(
+        results = fresh_collection.query(
             query_embeddings=[
                 query_embedding.tolist()
             ],
@@ -158,7 +169,7 @@ def retrieve(
 
     else:
 
-        results = collection.query(
+        results = fresh_collection.query(
             query_embeddings=[
                 query_embedding.tolist()
             ],
@@ -217,7 +228,7 @@ def retrieve(
             if neighbor_index < 1:
                 continue
 
-            neighbor_results = collection.get(
+            neighbor_results = fresh_collection.get(
                 where={
                     "$and": [
                         {"source": source},
